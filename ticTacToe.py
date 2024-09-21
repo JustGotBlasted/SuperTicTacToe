@@ -6,44 +6,106 @@ class MasterGame():
             [Game(), Game(), Game()]
         ]
 
+        self.oTurn = True
+        self.winner = "-"
         self.moveLog = []
-        self.availableGames = []
+        self.availableGames = [] # Provides a list of tuples that represent the coordinates of games that are available
+        self.availableGamesLog = []
 
-        for r in self.board:
-            for g in r:
-                self.availableGames.append(g)
+        for r in range(3):
+            for c in range(3):
+                self.availableGames.append((r, c))
 
     
 
     def makeMove(self, move):
         g = self.board[move[0] // 3][move[1] // 3]
+        
 
-
-        if g in self.availableGames:
+        if (move[0] // 3, move[1] // 3) in self.availableGames:
             r, c = move[0] % 3, move[1] % 3
 
             if g.isAvailable(r, c):
-                g.updateTile(r, c)
-                self.updateAvailableGames(self, move)
+                side = "o" if self.oTurn else "x"
+                g.updateTile(r, c, side)
+                g.updateWinner()
+
+                self.updateWinner()
+                self.updateAvailableGames(move)
+
+                self.moveLog.append(move)
+                self.availableGamesLog.append(self.availableGames)
+
+                self.oTurn = not self.oTurn
 
                 return True # Return true if the move was successful
         
         return False # Return false is the move was unsuccessful
 
 
+    def undoMove(self):
+        if len(self.moveLog) > 0:
+            move = self.moveLog[-1]
+            g = self.board[move[0] // 3][move[1] // 3]
+            g.updateTile(move[0] % 3, move[1] % 3, "-")
+            g.updateWinner()
+
+            self.oTurn = not self.oTurn
+            self.updateWinner()
+            self.moveLog.pop()
+            self.availableGamesLog.pop()
+
+
+            if len(self.availableGamesLog) > 0:
+                self.availableGames = self.availableGamesLog[-1]
+            else:
+                self.availableGames.clear()
+
+                for r in range(3):
+                    for c in range(3):
+                        self.availableGames.append((r, c))
+
+    
+    def reset(self):
+        self.__init__()
+
+
     def updateAvailableGames(self, move):
-        r, c = move[0] % 3, move[1] % 3
-        
-
-        if self.board[r][c].getWinner() == "-":
-            self.availableGames = self.board[r][c]
-        else:
+        if self.winner != "-":
             self.availableGames.clear()
+            return
 
-            for r in self.board:
-                for g in r:
-                    if g.getWinner() == "-":
-                        self.availableGames.append(g)
+
+        r, c = move[0] % 3, move[1] % 3
+    
+
+        if self.board[r][c].winner == "-":
+            self.availableGames = [(r, c)]
+        else:
+            self.availableGames = []
+            
+            for r in range(3):
+                for c in range(3):
+                    g = self.board[r][c]
+
+                    if g.winner == "-":
+                        self.availableGames.append((r, c))
+    
+
+    def updateWinner(self):
+        b = self.board
+        g = Game()
+        g.board = [
+            [b[0][0].winner, b[0][1].winner, b[0][2].winner],
+            [b[1][0].winner, b[1][1].winner, b[1][2].winner],
+            [b[2][0].winner, b[2][1].winner, b[2][2].winner]
+        ]
+
+        g.updateWinner()
+        self.winner = g.winner
+
+
+        
 
 class Game():
     def __init__(self):
@@ -52,6 +114,8 @@ class Game():
             ["-", "-", "-"],
             ["-", "-", "-"]
         ]
+
+        self.winner = "-"
     
 
     def isAvailable(self, r, c):
@@ -59,22 +123,26 @@ class Game():
 
 
     def updateTile(self, r, c, side):
-        self[r][c] = side
+        self.board[r][c] = side
     
 
-    def getWinner(self):
+    def updateWinner(self):
         for r in range(3):
             if self.board[r][0] != "-" and self.board[r][0] == self.board[r][1] == self.board[r][2]:
-                return self.board[r][0]
+                self.winner = self.board[r][0]
+                return
         
         for c in range(3):
             if self.board[0][c] != "-" and self.board[0][c] == self.board[1][c] == self.board[2][c]:
-                return self.board[0][c]
+                self.winner = self.board[0][c]
+                return
         
         if self.board[0][0] != "-" and self.board[0][0] == self.board[1][1] == self.board[2][2]:
-            return self.board[0][0]
+            self.winner = self.board[0][0]
+            return
         elif self.board[0][2] != "-" and self.board[0][2] == self.board[1][1] == self.board[2][0]:
-            return self.board[0][2]
+            self.winner = self.board[0][2]
+            return
 
 
-        return "-" 
+        self.winner = "-"
